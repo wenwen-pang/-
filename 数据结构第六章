@@ -1,0 +1,763 @@
+# -
+数据结构算法与应用
+//6.1chainNode结构
+// chain node
+
+#ifndef chainNode_
+#define chainNode_
+
+template <class T>
+struct chainNode 
+{
+   // data members
+   T element;
+   chainNode<T> *next;
+
+   // methods
+   chainNode() {}
+   chainNode(const T& element)
+      {this->element = element;}
+   chainNode(const T& element, chainNode<T>* next)
+      {this->element = element;
+       this->next = next;}
+};
+
+#endif
+
+//6.2~6.7
+//chain.h
+#ifndef CHAIN_H
+#define CHAIN_H
+
+#include<iostream>
+#include<sstream>
+#include<string>
+#include "linearList.h"
+#include "chainNode.h"
+
+using namespace std;
+
+class linkedDigraph;
+template <class T> class linkedWDigraph;
+
+template<class T>
+class chain : public linearList<T> 
+{
+   friend linkedDigraph;
+   friend linkedWDigraph<int>;
+   friend linkedWDigraph<float>;
+   friend linkedWDigraph<double>;
+   public:
+      // constructor, copy constructor and destructor
+      chain(int initialCapacity = 10);
+      chain(const chain<T>&);
+      ~chain();
+
+      // ADT methods
+      bool empty() const {return listSize == 0;}
+      int size() const {return listSize;}
+      T& get(int theIndex) const;
+      int indexOf(const T& theElement) const;
+      void erase(int theIndex);
+      void insert(int theIndex, const T& theElement);
+      void output(ostream& out) const;
+
+   protected:
+      void checkIndex(int theIndex) const;
+            // throw illegalIndex if theIndex invalid
+      chainNode<T>* firstNode;  // pointer to first node in chain
+      int listSize;             // number of elements in list
+};
+
+//chain.cpp
+#include<iostream>
+#include<sstream>
+#include<string>
+#include "linearList.h"
+#include "chainNode.h"
+#include "chain.h"
+template<class T>
+chain<T>::chain(int initialCapacity)
+{// Constructor.
+   if (initialCapacity < 1)
+   {ostringstream s;
+    s << "Initial capacity = " << initialCapacity << " Must be > 0";
+    throw illegalParameterValue(s.str());
+   }
+   firstNode = NULL;
+   listSize = 0;
+}
+
+template<class T>
+chain<T>::chain(const chain<T>& theList)
+{// Copy constructor.
+   listSize = theList.listSize;
+
+   if (listSize == 0)
+   {// theList is empty
+      firstNode = NULL;
+      return;
+   }
+
+   // non-empty list
+   chainNode<T>* sourceNode = theList.firstNode;
+                    // node in theList to copy from
+   firstNode = new chainNode<T>(sourceNode->element);
+                    // copy first element of theList
+   sourceNode = sourceNode->next;
+   chainNode<T>* targetNode = firstNode;
+                    // current last node in *this
+   while (sourceNode != NULL)
+   {// copy remaining elements
+      targetNode->next = new chainNode<T>(sourceNode->element);
+      targetNode = targetNode->next;
+      sourceNode = sourceNode->next;
+   }
+   targetNode->next = NULL; // end the chain
+}
+
+template<class T>
+chain<T>::~chain()
+{// Chain destructor. Delete all nodes in chain.
+   while (firstNode != NULL)
+   {// delete firstNode
+      chainNode<T>* nextNode = firstNode->next;
+      delete firstNode;
+      firstNode = nextNode;
+   }
+}
+
+template<class T>
+void chain<T>::checkIndex(int theIndex) const
+{// Verify that theIndex is between 0 and listSize - 1.
+   if (theIndex < 0 || theIndex >= listSize)
+   {ostringstream s;
+    s << "index = " << theIndex << " size = " << listSize;
+    throw illegalIndex(s.str());
+   }
+
+}
+
+template<class T>
+T& chain<T>::get(int theIndex) const
+{// Return element whose index is theIndex.
+ // Throw illegalIndex exception if no such element.
+   checkIndex(theIndex);
+
+   // move to desired node
+   chainNode<T>* currentNode = firstNode;
+   for (int i = 0; i < theIndex; i++)
+      currentNode = currentNode->next;
+
+   return currentNode->element;
+}
+
+template<class T>
+int chain<T>::indexOf(const T& theElement) const
+{// Return index of first occurrence of theElement.
+ // Return -1 if theElement not in list.
+
+   // search the chain for theElement
+   chainNode<T>* currentNode = firstNode;
+   int index = 0;  // index of currentNode
+   while (currentNode != NULL && 
+          currentNode->element != theElement)
+   {
+      // move to next node
+      currentNode = currentNode->next;
+      index++;
+   }
+
+   // make sure we found matching element
+   if (currentNode == NULL)
+      return -1;
+   else
+      return index;
+}
+
+template<class T>
+void chain<T>::erase(int theIndex)
+{// Delete the element whose index is theIndex.
+ // Throw illegalIndex exception if no such element.
+   checkIndex(theIndex);
+
+   // valid index, locate node with element to delete
+   chainNode<T>* deleteNode;
+   if (theIndex == 0)
+   {// remove first node from chain
+      deleteNode = firstNode;
+      firstNode = firstNode->next;
+   }
+   else 
+   {  // use p to get to predecessor of desired node
+      chainNode<T>* p = firstNode;
+      for (int i = 0; i < theIndex - 1; i++)
+         p = p->next;
+   
+      deleteNode = p->next;
+      p->next = p->next->next; // remove deleteNode from chain
+   }
+   listSize--;
+   delete deleteNode;
+}
+
+template<class T>
+void chain<T>::insert(int theIndex, const T& theElement)
+{// Insert theElement so that its index is theIndex.
+   if (theIndex < 0 || theIndex > listSize)
+   {// invalid index
+      ostringstream s;
+      s << "index = " << theIndex << " size = " << listSize;
+      throw illegalIndex(s.str());
+   }
+
+   if (theIndex == 0)
+      // insert at front
+      firstNode = new chainNode<T>(theElement, firstNode);
+   else
+   {  // find predecessor of new element
+      chainNode<T>* p = firstNode;
+      for (int i = 0; i < theIndex - 1; i++)
+         p = p->next;
+   
+      // insert after p
+      p->next = new chainNode<T>(theElement, p->next);
+   }
+   listSize++;
+}
+
+template<class T>
+void chain<T>::output(ostream& out) const
+{// Put the list into the stream out.
+   for (chainNode<T>* currentNode = firstNode;
+                      currentNode != NULL;
+                      currentNode = currentNode->next)
+      out << currentNode->element << "  ";
+}
+
+// overload <<
+template <class T>
+ostream& operator<<(ostream& out, const chain<T>& x)
+   {x.output(out); return out;}
+
+#endif
+
+//6.1.5
+//extendedLinearList.h
+#ifndef extendedLinearList_
+#define extendedLinearList_
+#include <iostream>
+#include "linearList.h"
+
+using namespace std;
+
+template<class T>
+class extendedLinearList : linearList<T> 
+{
+   public:
+      virtual ~extendedLinearList() {}
+      virtual void clear() = 0;
+                  // empty the list
+      virtual void push_back(const T& theElement) = 0;
+                  // insert theElement at end of list
+};
+#endif
+
+//myExceptions.h
+#ifndef myExceptions_
+#define myExceptions_
+#include <string>
+
+using namespace std;
+
+// illegal parameter value
+class illegalParameterValue 
+{
+   public:
+      illegalParameterValue(string theMessage = "Illegal parameter value")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// illegal input data
+class illegalInputData 
+{
+   public:
+      illegalInputData(string theMessage = "Illegal data input")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// illegal index
+class illegalIndex 
+{
+   public:
+      illegalIndex(string theMessage = "Illegal index")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// matrix index out of bounds
+class matrixIndexOutOfBounds 
+{
+   public:
+      matrixIndexOutOfBounds
+            (string theMessage = "Matrix index out of bounds")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// matrix size mismatch
+class matrixSizeMismatch 
+{
+   public:
+      matrixSizeMismatch(string theMessage = 
+                   "The size of the two matrics doesn't match")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// stack is empty
+class stackEmpty
+{
+   public:
+      stackEmpty(string theMessage = 
+                   "Invalid operation on empty stack")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// queue is empty
+class queueEmpty
+{
+   public:
+      queueEmpty(string theMessage = 
+                   "Invalid operation on empty queue")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// hash table is full
+class hashTableFull
+{
+   public:
+      hashTableFull(string theMessage = 
+                   "The hash table is full")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// edge weight undefined
+class undefinedEdgeWeight
+{
+   public:
+      undefinedEdgeWeight(string theMessage = 
+                   "No edge weights defined")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+
+// method undefined
+class undefinedMethod
+{
+   public:
+      undefinedMethod(string theMessage = 
+                   "This method is undefined")
+            {message = theMessage;}
+      void outputMessage() {cout << message << endl;}
+   private:
+      string message;
+};
+#endif
+
+//extendedChain.h
+#ifndef extendedChain_
+#define extendedChain_
+
+#include <iostream>
+#include <sstream>
+#include <string>
+#include "extendedLinearList.h"
+#include "chainWithIterator.h"
+#include "myExceptions.h"
+
+using namespace std;
+
+template<class T>
+class extendedChain : public extendedLinearList<T>, public chain<T> 
+{
+   public:
+      // constructor and copy constructor
+      extendedChain(int initialCapacity = 10) :
+         chain<T>(initialCapacity) {}
+      extendedChain(const extendedChain<T>& c) :
+         chain<T>(c) {}
+
+      // ADT methods
+      bool empty() const {return listSize == 0;}
+      int size() const {return listSize;}
+      T& get(int theIndex) const
+         {return chain<T>::get(theIndex);}
+      int indexOf(const T& theElement) const
+         {return chain<T>::indexOf(theElement);}
+      void erase(int theIndex);
+      void insert(int theIndex, const T& theElement);
+      void clear()
+         {// Delete all nodes in chain.
+            while (firstNode != NULL)
+            {// delete firstNode
+               chainNode<T>* nextNode = firstNode->next;
+               delete firstNode;
+               firstNode = nextNode;
+            }
+            listSize = 0;
+         }
+      void push_back(const T& theElement);
+      void output(ostream& out) const
+         {chain<T>::output(out);}
+
+      // additional method
+      void zero()
+         {firstNode = NULL; listSize = 0;}
+      
+   protected:
+      chainNode<T>* lastNode;  // pointer to last node in chain
+};
+
+//extendChain.cpp
+#include <iostream>
+#include <sstream>
+#include <string>
+#include "extendedChain.h"
+#include "extendedLinearList.h"
+#include "chainWithIterator.h"
+#include "myExceptions.h"
+template<class T>
+void extendedChain<T>::erase(int theIndex)
+{// Delete the element whose index is theIndex.
+ // Throw illegalIndex exception if no such element.
+   checkIndex(theIndex);
+
+   // valid index, locate node with element to delete
+   chainNode<T>* deleteNode;
+   if (theIndex == 0)
+   {// remove first node from chain
+      deleteNode = firstNode;
+      firstNode = firstNode->next;
+   }
+   else 
+   {  // use p to get to predecessor of desired node
+      chainNode<T>* p = firstNode;
+      for (int i = 0; i < theIndex - 1; i++)
+         p = p->next;
+   
+      deleteNode = p->next;
+      p->next = p->next->next; // remove deleteNode from chain
+      if (deleteNode == lastNode)
+         lastNode = p;
+   }
+   listSize--;
+   delete deleteNode;
+}
+
+template<class T>
+void extendedChain<T>::insert(int theIndex, const T& theElement)
+{// Insert theElement so that its index is theIndex.
+   if (theIndex < 0 || theIndex > listSize)
+   {// invalid index
+      ostringstream s;
+      s << "index = " << theIndex << " size = " << listSize;
+      throw illegalIndex(s.str());
+   }
+
+   if (theIndex == 0)
+      {// insert at front
+         firstNode = new chainNode<T>(theElement, firstNode);
+         if (listSize == 0)
+            lastNode = firstNode;
+      }
+   else
+   {  // find predecessor of new element
+      chainNode<T>* p = firstNode;
+      for (int i = 0; i < theIndex - 1; i++)
+         p = p->next;
+   
+      // insert after p
+      p->next = new chainNode<T>(theElement, p->next);
+      if (listSize == theIndex)
+         lastNode = p->next;
+   }
+   listSize++;
+}
+
+template<class T>
+void extendedChain<T>::push_back(const T& theElement)
+{// Insert theElement at the end of the chain.
+   chainNode<T>* newNode = new chainNode<T>(theElement, NULL);
+   if (firstNode == NULL)
+      // chain is empty
+      firstNode = lastNode = newNode;
+   else
+   {  // attach next to lastNode
+      lastNode->next = newNode;
+      lastNode = newNode;
+   }
+   listSize++;
+}
+#endif
+
+6.2circularListWithHeader类
+//circularListWithHeader.h
+#ifndef circularListWithHeader_
+#define circularListWithHeader_
+
+#include<iostream>
+#include<sstream>
+#include<string>
+#include "chainNode.h"
+#include "myExceptions.h"
+
+using namespace std;
+
+template<class T>
+class circularListWithHeader 
+{
+   public:
+      // constructor
+      circularListWithHeader();
+
+      // some methods
+      int size() const {return listSize;}
+      int indexOf(const T& theElement) const;
+      void insert(int theIndex, const T& theElement);
+      void output(ostream& out) const;
+
+   protected:
+      void checkIndex(int theIndex) const;
+            // throw illegalIndex if theIndex invalid
+      chainNode<T>* headerNode;  // pointer to header node
+      int listSize;              // number of elements in list
+};
+
+#include<iostream>
+#include<sstream>
+#include<string>
+#include "circularListWithHeader"
+#include "chainNode.h"
+#include "myExceptions.h"
+
+using namespace std;
+
+template<class T>
+circularListWithHeader<T>::circularListWithHeader()
+{// Constructor.
+   headerNode = new chainNode<T>();
+   headerNode->next = headerNode;
+   listSize = 0;
+}
+
+template<class T>
+void circularListWithHeader<T>::checkIndex(int theIndex) const
+{// Verify that theIndex is between 0 and listSize - 1.
+   if (theIndex < 0 || theIndex >= listSize)
+   {ostringstream s;
+    s << "index = " << theIndex << " size = " << listSize;
+    throw illegalIndex(s.str());
+   }
+
+}
+
+template<class T>
+int circularListWithHeader<T>::indexOf(const T& theElement) const
+{// Return index of first occurrence of theElement.
+ // Return -1 if theElement not in list.
+
+   // Put theElement in header node
+   headerNode->element = theElement;
+
+   // search the chain for theElement
+   chainNode<T>* currentNode = headerNode->next;
+   int index = 0;  // index of currentNode
+   while (currentNode->element != theElement)
+   {
+      // move to next node
+      currentNode = currentNode->next;
+      index++;
+   }
+
+   // make sure we found matching element
+   if (currentNode == headerNode)
+      return -1;
+   else
+      return index;
+}
+
+template<class T>
+void circularListWithHeader<T>::insert(int theIndex, const T& theElement)
+{// Insert theElement so that its index is theIndex.
+   if (theIndex < 0 || theIndex > listSize)
+   {// invalid index
+      ostringstream s;
+      s << "index = " << theIndex << " size = " << listSize;
+      throw illegalIndex(s.str());
+   }
+
+   // find predecessor of new element
+   chainNode<T>* p = headerNode;
+   for (int i = 0; i < theIndex; i++)
+      p = p->next;
+   
+   // insert after p
+   p->next = new chainNode<T>(theElement, p->next);
+   
+   listSize++;
+}
+
+template<class T>
+void circularListWithHeader<T>::output(ostream& out) const
+{// Put the list into the stream out.
+   for (chainNode<T>* currentNode = headerNode->next;
+                      currentNode != headerNode;
+                      currentNode = currentNode->next)
+      out << currentNode->element << "  ";
+}
+
+// overload <<
+template <class T>
+ostream& operator<<(ostream& out, const circularListWithHeader<T>& x)
+   {x.output(out); return out;}
+
+#endif
+
+6.14
+//结构studentRecord
+#ifndef studentRecord_
+#define studentRecord_
+
+#include <string>
+
+using namespace std;
+struct studentRecord 
+{
+   int score;
+   string* name;
+
+   int operator !=(const studentRecord& x) const
+      {return (score != x.score);}
+};
+
+ostream& operator<<(ostream& out, const studentRecord& x)
+   {out << x.score << ' ' << *x.name << endl; return out;}
+
+#endif
+
+6.15
+//结构studentRecord第二种定义
+#ifndef studentRecord_
+#define studentRecord_
+
+#include <string>
+
+using namespace std;
+
+struct studentRecord 
+{
+   int score;
+   string* name;
+
+   operator int() const {return score;}
+      // type conversion from studentRecord to int
+};
+
+ostream& operator<<(ostream& out, const studentRecord& x)
+   {out << x.score << ' ' << *x.name << endl; return out;}
+
+#endif
+
+6.16
+//结构studentRecord第三种定义
+#ifndef studentRecord_
+#define studentRecord_
+
+#include <string>
+
+using namespace std;
+
+struct studentRecord 
+{
+   int score;
+   string* name;
+
+   int operator !=(const studentRecord& x) const
+   {return (score != x.score ||);}
+
+   operator int() const {return score;}
+};
+
+ostream& operator<<(ostream& out, const studentRecord& x)
+   {out << x.score << ' ' << *x.name << endl; return out;}
+
+#endif
+
+6.18
+void binSort(chain<studentRecord>& theChain, int range)
+{// Sort by score.
+
+   // initialize the bins
+   chain<studentRecord> *bin;
+   bin = new chain<studentRecord> [range + 1];
+
+   // distribute student records from theChain to bins
+   int numberOfElements = theChain.size();
+   for (int i = 1; i <= numberOfElements; i++)
+   {
+      studentRecord x = theChain.get(0);
+      theChain.erase(0);
+      bin[x.score].insert(0,x);
+   }
+
+   // collect elements from bins
+   for (int j = range; j >= 0; j--)
+      while (!bin[j].empty())
+      {
+         studentRecord x = bin[j].get(0);
+         bin[j].erase(0);
+         theChain.insert(0,x);
+      }
+
+   delete [] bin;
+}
+
+6.20
+//结构equivNode
+#ifndef equivNode_
+#define equivNode_
+
+struct equivNode 
+{
+   int equivClass,  // element class identifier
+       size,        // number of elements in class
+       next;        // pointer to next element in class
+};
+
+#endif
+
+6.21
