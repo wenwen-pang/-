@@ -1,0 +1,279 @@
+//平差.h
+#ifndef PCH_H
+#define PCH_H
+
+#include <iostream>
+
+class traverse_survey
+{
+private:
+	const double pi = 3.1415926;
+public:
+	traverse_survey();  //导线测量的构造函数
+	~traverse_survey(); // 导线测量的析构函数
+	void h_d(double *d,double *m,double *s,int N,double *Decimal_degrees);//把观测的度分秒转化了弧度使用
+	void transfrom_d_m_s(double Decimal_degrees); // 十进制的度转化为度分秒
+	void position_angle(double x, double y);  //求方位角
+	void start_end_position(double A_x, double A_y, double B_x, double B_y,  double &start_position);//求起始和末位的坐标方位角。
+	void sum_distance(int N, double *distance, double &sum);//求导线的总长
+	void Angle_position(double start_positon,  int N, double *Decimal_degrees,double *every_position);//求每一站的坐标方位角
+	void Correct_Angle_position(int N, double *every_position, double end_position, double *correct_every_position);//改正后的每一站的坐标方位角
+	void d_x_y(double N, double *distance, double *correct_every_position,double *d_x, double *d_y);//求d_x_y的值
+	void f_x(double N, double *d_x, double A_x, double C_x, double &f_x);//求f_x
+	void f_y(double N, double *d_y, double A_y, double C_y, double &f_y); //求f_y
+	void f_s(double sum,double f_x, double f_y); //求全长闭合差和全长相对闭合差
+	void Correct_d_x_y(int N, double *d_x, double *d_y, double *distance, double sum, double f_x, double f_y,double *correct_d_x, double *correct_d_y);//求改正之后的d_x_y
+	void x_y(int N, double A_x, double A_y, double *correct_d_x, double *correct_d_y, long double *x, long double *y);//求x,y;
+
+};
+
+//平差.cpp
+
+#include "pch.h"
+#include<math.h>
+#include<iostream>
+using namespace std;
+traverse_survey::traverse_survey()
+{
+}
+traverse_survey::~traverse_survey()
+{
+	cout << "-----------------------结束---------------------------" << endl;
+}
+//------------------  把观测的度分秒转化了十进制的度使用------------------------//
+//*d----------------输入的度
+//*m----------------输入的分
+//*s----------------输入的秒
+//N-----------------站数
+//*Decimal_degrees----------保存的每一站转化的观测角度的--十进制的度。
+void traverse_survey::h_d(double *d, double *m, double*s, int N, double *Decimal_degrees)
+{
+	for (int i = 0; i < N; i++)
+	{
+		Decimal_degrees[i] = d[i] + m[i] / 60 + s[i] / 3600;
+	}
+}
+//------------------十进制度 转化为度分秒输出------------------------//
+//Decimal_degrees--------------十进制的度
+void traverse_survey::transfrom_d_m_s(double Decimal_degrees)
+{
+	double d = 0, m = 0, s = 0;
+	d = int(Decimal_degrees);
+	m = int((Decimal_degrees - d) * 60);
+	s = (Decimal_degrees - d - m / 60) * 3600;
+	cout << d << "°" << m << "′" << s << "″" << endl;
+}
+//------------------求每一站的坐标方位角-和角度闭合差--------------------------//
+//start_positon--------------起始方位角
+//N--------------------------站数
+//*Decimal_degrees-----------每一站的观测角度
+//*every_position------------保存每一站的方位角 (十进制的度)
+void traverse_survey::Angle_position(double start_positon, int N, double *Decimal_degrees, double *every_position)
+{
+	for (int i = 0; i < N; i++)
+	{
+		if (i == 0)
+		{
+			every_position[0] = start_positon + Decimal_degrees[0] - 180;
+			if (every_position[0] < 0)
+			{
+				every_position[0] += 360;
+			}
+			else if (every_position[0] > 360)
+			{
+				every_position[0] -= 360;
+			}
+		}
+		else
+		{
+			every_position[i] = every_position[i - 1] + Decimal_degrees[i] - 180;
+			if (every_position[i] < 0)
+			{
+				every_position[i] += 360;
+			}
+			else if (every_position[i] > 360)
+			{
+				every_position[i] -= 360;
+			}
+		}
+		cout << "第" << i + 1 << "个坐标方位角为：";
+		transfrom_d_m_s(every_position[i]);
+		cout << endl;
+	}
+}
+//------------------------------改正后的每一站的坐标方位角------------------------------//
+//N------------------------------站数
+//*every_position  --------------每一站的坐标方位角
+//end_position-------------------最后一站的坐标方位角
+// *correct_every_position-------改正后的每一站坐标方位角
+void traverse_survey::Correct_Angle_position(int N, double *every_position, double end_position, double *correct_every_position)
+{
+	double temp = 0;
+	cout << "该导线的角度闭合差为：";
+	transfrom_d_m_s(every_position[N - 1] - end_position);
+	cout << endl;
+	temp = (every_position[N - 1] - end_position) / N;
+
+	for (int i = 0; i < N; i++)
+	{
+		correct_every_position[i] = every_position[i] - (i + 1)*temp;
+		cout << "第" << i + 1 << "个改正后的坐标方位角为：";
+		transfrom_d_m_s(correct_every_position[i]);
+		cout << endl;
+	}
+}
+//---------------------求d_x_y的值----------------------------//
+//N------------------------------------------站数
+//*distance----------------------------------每一站的距离
+//*correct_every_position--------------------每一站改正后的坐标方位角
+//*d_x---------------------------------------存储每一站的d_x
+//*d_y---------------------------------------存储每一站的d_y
+void traverse_survey::d_x_y(double N, double *distance, double *correct_every_position, double *d_x, double *d_y)
+{
+	for (int i = 0; i < N - 1; i++)
+	{
+		d_x[i] = distance[i] * cos(correct_every_position[i] * (pi / 180));
+		d_y[i] = distance[i] * sin(correct_every_position[i] * (pi / 180));
+		cout << "第" << i + 1 << "个的" << "d_x和d_y的值为：" << d_x[i] << "  ||  " << d_y[i] << endl;
+	}
+}
+//-------------------------导线的总长--------------------------//
+//N-----------------站数
+//*distance---------每一站的距离
+//sum --------------导线的总长
+void traverse_survey::sum_distance(int N, double *distance, double &sum)
+{
+	for (int i = 0; i < N - 1; i++)
+	{
+		sum += distance[i];
+	}
+	cout << "导线的总长：" << sum << endl;
+}
+
+//---------------------------求f_x-----------------------------//
+//N---------------------站数
+//*d_x------------------每一站的d_x
+//A_x-------------------起始点的x坐标
+//C_x-------------------终止点的x坐标
+//f_x-----------------f_x的值
+void traverse_survey::f_x(double N, double *d_x, double B_x, double C_x, double &f_x)
+{
+	double sum = 0;
+	double temp = B_x - C_x;
+	for (int i = 0; i < N - 1; i++)
+	{
+		sum += d_x[i];
+	}
+	f_x = temp + sum;
+	cout << "f_x的值为：" << f_x << endl;
+}
+//---------------------------求f_y-----------------------------//
+//N---------------------站数
+//*d_y------------------每一站的d_y
+//A_y-------------------起始点的y坐标
+//C_x-------------------终止点的y坐标
+//f_y-----------------f_y的值
+void traverse_survey::f_y(double N, double *d_y, double B_y, double C_y, double &f_y)
+{
+	double sum = 0;
+	double temp = B_y - C_y;
+	for (int i = 0; i < N - 1; i++)
+	{
+		sum += d_y[i];
+	}
+	f_y = temp + sum;
+	cout << "f_x的值为：" << f_y << endl;
+}
+//---------------------求全长闭合差和全长相对闭合差---------------------//
+//f_x-------------------------导线f_x的值
+//f_y-------------------------导线f_y的值
+void traverse_survey::f_s(double sum, double f_x, double f_y)
+{
+	double f_s = sqrt(pow(f_x, 2) + pow(f_y, 2));
+	cout << "全长闭合差f_s的值为:  " << f_s << endl;
+	double K = 1 / (sum / f_s);
+	cout << "全长相对闭合差K为：" << K << endl;
+	cout << "1/K = " << int(1 / K) << "  说明：";
+	if (int(1 / K) > 4000)
+	{
+		cout << "该导线没有超限！" << endl;
+	}
+	else
+	{
+		cout << "该导线超限！" << endl;
+	}
+}
+//-------------------------求改正之后的d_x_y----------------------//
+//N----------------------------站数
+//*d_x-------------------------每一站的d_x的值
+// *d_y------------------------每一站的d_y的值
+//*distance--------------------每一站的距离
+//sum--------------------------导线的总长
+//f_x--------------------------f_x的值
+//f_y--------------------------f_y的值
+void traverse_survey::Correct_d_x_y(int N, double *d_x, double *d_y, double *distance, double sum, double f_x, double f_y, double *correct_d_x, double *correct_d_y)
+{
+	double *temp_x = new double[N - 1]{ 0 };        //动态的创建一个数组
+	double *temp_y = new double[N - 1]{ 0 };
+	for (int i = 0; i < N - 1; i++)
+	{
+		temp_x[i] = f_x * (distance[i] / sum);
+		temp_y[i] = f_y * (distance[i] / sum);
+		cout << "-----------------------------------------------------------------" << endl;
+		cout << "第" << i + 1 << "个的" << "改正数—----—d_x和d_y的值为：" << temp_x[i] << "  ||  " << temp_y[i] << endl;
+		correct_d_x[i] = d_x[i] - temp_x[i];
+		correct_d_y[i] = d_y[i] - temp_y[i];
+		cout << "第" << i + 1 << "个的" << "改正之后的——d_x和d_y的值为：" << correct_d_x[i] << "  ||  " << correct_d_y[i] << endl;
+	}
+}
+//-------------------------------------求x,y--------------------------------//;
+//N---------------------------站数
+//A_x-------------------------起始的x坐标
+//A_y-------------------------起始的y坐标
+//*correct_d_x----------------改正后的d_x
+//*correct_d_y----------------改正后的d_y
+//*x--------------------------储存每一站x的坐标
+//*y--------------------------储存每一站y的坐标
+void traverse_survey::x_y(int N, double A_x, double A_y, double *correct_d_x, double *correct_d_y, long double *x, long double *y)//求x,y;
+{
+	for (int i = 0; i < N - 1; i++)
+	{
+		if (i == 0)
+		{
+			x[0] = correct_d_x[0] + A_x;
+			y[0] = correct_d_y[0] + A_y;
+		}
+		else
+		{
+			x[i] = x[i - 1] + correct_d_x[i];
+			y[i] = y[i - 1] + correct_d_y[i];
+		}
+		printf("第%d站坐标%.4lf  ||   %.4lf\n", i + 1, x[i], y[i]);
+
+	}
+}
+//求方位角
+void traverse_survey::position_angle(double x, double y)
+{
+
+}
+//求起始和末位的坐标方位角。
+//A_x,A_y,B_x, B_y  起始边
+//C_x,C_y,D_x, D_y  终止边
+//start_position, 起始坐标方位角
+//end_position)   终止坐标方位角
+void traverse_survey::start_end_position(double A_x, double A_y, double B_x, double B_y, double &start_position)
+{
+	double start_x = B_x - A_x;
+	double start_y = B_y - A_y;
+	double temp = atan2(start_y, start_x)*(180 / pi);
+	if (start_y > 0)
+	{
+		start_position = fabs(temp);
+	}
+	if (start_y < 0)
+	{
+		start_position = 360 - fabs(temp);
+	}
+	transfrom_d_m_s(start_position);
+}
